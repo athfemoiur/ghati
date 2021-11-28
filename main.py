@@ -256,6 +256,36 @@ class BigNumber:
         return result
 
 
+def calculate_big_number_operations(string):
+    data = string.split(" ")
+    big_number = BigNumber(data[0])
+    if data[1] == '++':
+        return big_number.increase().to_int()
+    elif data[1] == '--':
+        return big_number.decrease().to_int()
+    elif data[1] == 'R':
+        return big_number.shift_right().to_int()
+    return big_number.shift_left().to_int()
+
+
+def calculate_polynomial_operations(string):
+    data = string.split(" ")
+    p1 = Polynomial()
+    p2 = Polynomial()
+    polynomial_1_string, polynomial_2_string = data[0]
+    polynomial_1_string.pop(0)
+    polynomial_1_string.pop()
+
+
+def init():
+    for _ in range(int(input())):
+        pass
+    for _ in range(int(input())):
+        pass
+    x = int(input())
+    target = input()
+
+
 if __name__ == "__main__":
     p1 = Polynomial()
     p1.add(2, 1)
