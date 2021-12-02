@@ -44,6 +44,9 @@ class BigNumber:
             return -other.unsigned_minus(self)
         return BigNumber('0')
 
+    def __mul__(self, other):
+        return self.times(other)
+
     def __pow__(self, power, modulo=None):
         return self.to_the_power_of(power)
 
