@@ -22,18 +22,43 @@ class BigNumber:
             return '0'
         return number_str.lstrip('0')
 
+    def __getitem__(self, key):
+        return self.num_array[key]
+
+    def __setitem__(self, key, value):
+        self.num_array[key] = value
+
+    def __neg__(self):
+        result = self.clone()
+        result.sign = not result.sign
+        return result
+
+    def __add__(self, other):
+        return self.plus(other)
+
+    def __sub__(self, other):
+        comparison = self.compare(other)
+        if comparison == 1:
+            return self.minus(other)
+        elif comparison == -1:
+            return -other.unsigned_minus(self)
+        return BigNumber('0')
+
+    def __pow__(self, power, modulo=None):
+        return self.to_the_power_of(power)
+
+    def __lt__(self, other):
+        return self.compare(other) == -1
+
+    def __gt__(self, other):
+        return self.compare(other) == 1
+
     @classmethod
     def zero(cls, n):
         zero = cls('0')
         for _ in range(n - 1):
             zero.num_array.append(0)
         return zero
-
-    def __getitem__(self, key):
-        return self.num_array[key]
-
-    def __setitem__(self, key, value):
-        self.num_array[key] = value
 
     def to_int(self):
         number_str = str(self)
@@ -86,9 +111,6 @@ class BigNumber:
 
         return result
 
-    def __add__(self, other):
-        return self.plus(other)
-
     def minus(self, other):
         n1, n2 = len(self.num_array), len(other.num_array)
         result_length = max(n1, n2)
@@ -103,22 +125,11 @@ class BigNumber:
             result[i] = self[i] - other[i]
         return result
 
-    def __sub__(self, other):
-        comparison = self.compare(other)
-        if comparison == 1:
-            return self.minus(other)
-        elif comparison == -1:
-            return -other.unsigned_minus(self)
-        return BigNumber('0')
-
     def increase(self):
         return self.plus(BigNumber('1'))
 
     def decrease(self):
         return self.minus(BigNumber('1'))
-
-    def __mul__(self, other):
-        return self.times(other)
 
     def times(self, other):
         n1, n2 = len(self.num_array), len(other.num_array)
@@ -134,20 +145,6 @@ class BigNumber:
             big_temp = big_temp.shift_left(i)
             result = result.plus(big_temp)
         result.sign = not (self.sign ^ other.sign)
-        return result
-
-    def __pow__(self, power, modulo=None):
-        return self.to_the_power_of(power)
-
-    def __lt__(self, other):
-        return self.compare(other) == -1
-
-    def __gt__(self, other):
-        return self.compare(other) == 1
-
-    def __neg__(self):
-        result = self.clone()
-        result.sign = not result.sign
         return result
 
     def to_the_power_of(self, other):
@@ -169,9 +166,6 @@ class Node:
         self.coef = coef
         self.exp = exp
 
-    def __repr__(self):
-        return f"({self.coef} , {self.exp})"
-
 
 class Polynomial:
     available = 0
@@ -180,11 +174,6 @@ class Polynomial:
     def __init__(self):
         self.start = None
         self.finish = None
-
-    def print_polynomial(self):
-        for i in range(self.start, self.finish + 1):
-            print(Polynomial.elements[i], end=" ")
-        print()
 
     def get_value(self, x):
         result = 0
