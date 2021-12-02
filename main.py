@@ -1,106 +1,8 @@
 import copy
 
 
-class Node:
-    def __init__(self, coef, exp):
-        self.coef = coef
-        self.exp = exp
-
-    def __repr__(self):
-        return f"({self.coef} , {self.exp})"
-
-
-class Polynomial:
-    available = 0
-    elements = list()
-
-    def __init__(self):
-        self.start = None
-        self.finish = None
-
-    def print_polynomial(self):
-        for i in range(self.start, self.finish + 1):
-            print(Polynomial.elements[i], end=" ")
-        print()
-
-    def add(self, coef, exp):
-        node = Node(coef, exp)
-        if self.start is None:
-            self.start = self.finish = Polynomial.available
-            self.elements.append(node)
-        else:
-            for i in range(self.finish, self.start - 1, -1):
-                if Polynomial.elements[i].exp == exp:
-                    Polynomial.elements[i].coef += coef
-                    break
-                elif Polynomial.elements[i].exp > exp:
-                    Polynomial.elements.insert(i + 1, node)
-                    self.finish += 1
-                    break
-        Polynomial.available += 1
-
-    def remove(self, coef, exp):
-        node = Node(coef, exp)
-        for i in range(self.start, self.finish + 1):
-            if node == Polynomial.elements[i]:
-                Polynomial.elements.pop(i)
-                break
-
-    def negative(self):
-        for i in range(self.start, self.finish + 1):
-            Polynomial.elements[i].coef *= -1
-
-    def plus(self, other):
-        result = Polynomial()
-        i = self.start
-        j = other.start
-        while i <= self.finish and j <= other.finish:
-            if Polynomial.elements[i].exp < Polynomial.elements[j].exp:
-                result.add(other.elements[j].coef, other.elements[j].exp)
-                j += 1
-            elif Polynomial.elements[i].exp > Polynomial.elements[j].exp:
-                result.add(Polynomial.elements[i].coef, Polynomial.elements[i].exp)
-                i += 1
-            else:
-                result.add(Polynomial.elements[i].coef + other.elements[j].coef, Polynomial.elements[i].exp)
-                i += 1
-                j += 1
-
-        return result
-
-    def minus(self, other):
-        self.negative()
-        return self.plus(other)
-
-    def times(self, other):
-        result = Polynomial()
-        for i in range(self.start, self.finish + 1):
-            for j in range(other.start, other.finish + 1):
-                result.add(Polynomial.elements[i].coef * Polynomial.elements[j].coef,
-                           Polynomial.elements[i].exp + Polynomial.elements[j].exp)
-        return result
-
-    def is_zero(self):
-        if self.start is None:
-            return True
-        for i in range(self.start, self.finish + 1):
-            if not Polynomial.elements[i] == 0:
-                return False
-        return True
-
-    def get_coef(self, exp):
-        for i in range(self.start, self.finish + 1):
-            if Polynomial.elements[i].exp == exp:
-                return Polynomial.elements[i].coef
-        return None
-
-    def get_maximum_exp(self):
-        if self.start is None:
-            return None
-        return Polynomial.elements[self.start].exp
-
-
 class BigNumber:
+
     def __init__(self, number_str):
         self.sign = True
         if number_str[0] == '-':
@@ -170,29 +72,6 @@ class BigNumber:
                 return -1
         return 0
 
-    @staticmethod
-    def plus_minus_handler(b1, b2, operator):
-        if operator == '-':
-            b2.sign = not b2.sign
-        if b1.sign and b2.sign:
-            result = b1.plus(b2)
-            result.sign = True
-            return result
-        if not b1.sign and not b2.sign:
-            result = b1.plus(b2)
-            result.sign = False
-            return result
-        compare_result = b1.compare(b2)
-        if compare_result == 1:
-            result = b1.minus(b2)
-            result.sign = b1.sign
-            return result
-        if compare_result == -1:
-            result = b2.minus(b1)
-            result.sign = b2.sign
-            return result
-        return BigNumber('0')
-
     def plus(self, other):
         n1, n2 = len(self.num_array), len(other.num_array)
         result_length = max(n1, n2) + 1
@@ -206,6 +85,9 @@ class BigNumber:
             carry = sum_result // 10
 
         return result
+
+    def __add__(self, other):
+        return self.plus(other)
 
     def minus(self, other):
         n1, n2 = len(self.num_array), len(other.num_array)
@@ -221,11 +103,22 @@ class BigNumber:
             result[i] = self[i] - other[i]
         return result
 
+    def __sub__(self, other):
+        comparison = self.compare(other)
+        if comparison == 1:
+            return self.minus(other)
+        elif comparison == -1:
+            return -other.unsigned_minus(self)
+        return BigNumber('0')
+
     def increase(self):
         return self.plus(BigNumber('1'))
 
     def decrease(self):
         return self.minus(BigNumber('1'))
+
+    def __mul__(self, other):
+        return self.times(other)
 
     def times(self, other):
         n1, n2 = len(self.num_array), len(other.num_array)
@@ -240,6 +133,21 @@ class BigNumber:
                 carry = temp_result // 10
             big_temp = big_temp.shift_left(i)
             result = result.plus(big_temp)
+        result.sign = not (self.sign ^ other.sign)
+        return result
+
+    def __pow__(self, power, modulo=None):
+        return self.to_the_power_of(power)
+
+    def __lt__(self, other):
+        return self.compare(other) == -1
+
+    def __gt__(self, other):
+        return self.compare(other) == 1
+
+    def __neg__(self):
+        result = self.clone()
+        result.sign = not result.sign
         return result
 
     def to_the_power_of(self, other):
@@ -256,42 +164,214 @@ class BigNumber:
         return result
 
 
-def calculate_big_number_operations(string):
-    data = string.split(" ")
-    big_number = BigNumber(data[0])
-    if data[1] == '++':
-        return big_number.increase().to_int()
-    elif data[1] == '--':
-        return big_number.decrease().to_int()
-    elif data[1] == 'R':
-        return big_number.shift_right().to_int()
-    return big_number.shift_left().to_int()
+class Node:
+    def __init__(self, coef: BigNumber, exp: BigNumber):
+        self.coef = coef
+        self.exp = exp
+
+    def __repr__(self):
+        return f"({self.coef} , {self.exp})"
 
 
-def calculate_polynomial_operations(string):
-    data = string.split(" ")
-    p1 = Polynomial()
-    p2 = Polynomial()
-    polynomial_1_string, polynomial_2_string = data[0]
-    polynomial_1_string.pop(0)
-    polynomial_1_string.pop()
+class Polynomial:
+    available = 0
+    elements = list()
+
+    def __init__(self):
+        self.start = None
+        self.finish = None
+
+    def print_polynomial(self):
+        for i in range(self.start, self.finish + 1):
+            print(Polynomial.elements[i], end=" ")
+        print()
+
+    def get_value(self, x):
+        result = 0
+        x_big_number = BigNumber(str(x))
+        for i in range(self.start, self.finish + 1):
+            result += (x_big_number ** Polynomial.elements[i].exp * Polynomial.elements[i].coef).to_int()
+
+        return result
+
+    def add(self, coef, exp):
+        node = Node(coef, exp)
+        if self.start is None:
+            self.start = self.finish = Polynomial.available
+            self.elements.append(node)
+        else:
+            for i in range(self.finish, self.start - 1, -1):
+                if Polynomial.elements[i].exp == exp:
+                    Polynomial.elements[i].coef += coef
+                    break
+                elif Polynomial.elements[i].exp > exp:
+                    Polynomial.elements.insert(i + 1, node)
+                    self.finish += 1
+                    break
+        Polynomial.available += 1
+
+    def remove(self, coef, exp):
+        node = Node(coef, exp)
+        for i in range(self.start, self.finish + 1):
+            if node == Polynomial.elements[i]:
+                Polynomial.elements.pop(i)
+                break
+
+    def plus(self, other):
+        result = Polynomial()
+        i = self.start
+        j = other.start
+        while i <= self.finish and j <= other.finish:
+            if Polynomial.elements[i].exp < Polynomial.elements[j].exp:
+                result.add(other.elements[j].coef, other.elements[j].exp)
+                j += 1
+            elif Polynomial.elements[i].exp > Polynomial.elements[j].exp:
+                result.add(Polynomial.elements[i].coef, Polynomial.elements[i].exp)
+                i += 1
+            else:
+                result.add(Polynomial.elements[i].coef + other.elements[j].coef, Polynomial.elements[i].exp)
+                i += 1
+                j += 1
+        while i <= self.finish:
+            result.add(Polynomial.elements[i].coef, Polynomial.elements[i].exp)
+            i += 1
+        while j <= other.finish:
+            result.add(other.elements[j].coef, other.elements[j].exp)
+            j += 1
+
+        return result
+
+    def minus(self, other):
+        result = Polynomial()
+        i = self.start
+        j = other.start
+        while i <= self.finish and j <= other.finish:
+            if Polynomial.elements[i].exp < Polynomial.elements[j].exp:
+                result.add(-other.elements[j].coef, other.elements[j].exp)
+                j += 1
+            elif Polynomial.elements[i].exp > Polynomial.elements[j].exp:
+                result.add(Polynomial.elements[i].coef, Polynomial.elements[i].exp)
+                i += 1
+            else:
+                result.add(Polynomial.elements[i].coef - other.elements[j].coef, Polynomial.elements[i].exp)
+                i += 1
+                j += 1
+        while i <= self.finish:
+            result.add(Polynomial.elements[i].coef, Polynomial.elements[i].exp)
+            i += 1
+        while j <= other.finish:
+            result.add(-other.elements[j].coef, other.elements[j].exp)
+            j += 1
+        return result
+
+    def times(self, other):
+        result = Polynomial()
+        for i in range(self.start, self.finish + 1):
+            for j in range(other.start, other.finish + 1):
+                result.add(Polynomial.elements[i].coef * Polynomial.elements[j].coef,
+                           Polynomial.elements[i].exp + Polynomial.elements[j].exp)
+        return result
+
+    def is_zero(self):
+        if self.start is None:
+            return True
+        for i in range(self.start, self.finish + 1):
+            if not Polynomial.elements[i] == 0:
+                return False
+        return True
+
+    def get_coef(self, exp):
+        for i in range(self.start, self.finish + 1):
+            if Polynomial.elements[i].exp == exp:
+                return Polynomial.elements[i].coef
+        return None
+
+    def get_maximum_exp(self):
+        if self.start is None:
+            return None
+        return Polynomial.elements[self.start].exp
 
 
-def init():
-    for _ in range(int(input())):
-        pass
-    for _ in range(int(input())):
-        pass
-    x = int(input())
-    target = input()
+class Ghati:
+    results = list()
+    polynomial_inputs = list()
+    big_number_inputs = list()
+    unknown_value = None
+    target = None
+    index = None
+
+    @classmethod
+    def init(cls):
+        for _ in range(int(input())):
+            cls.polynomial_inputs.append(input())
+        for _ in range(int(input())):
+            cls.big_number_inputs.append(input())
+        cls.unknown_value = int(input())
+        cls.target = int(input())
+
+    @classmethod
+    def calculate_big_number_operations(cls):
+        for string in cls.big_number_inputs:
+            data = string.split(" ")
+            big_number = BigNumber(data[0])
+            if data[1] == '++':
+                cls.results.append(big_number.increase().to_int())
+            elif data[1] == '--':
+                cls.results.append(big_number.decrease().to_int())
+            elif data[1] == 'R':
+                cls.results.append(big_number.shift_right().to_int())
+            else:
+                cls.results.append(big_number.shift_left().to_int())
+
+    @classmethod
+    def calculate_polynomial_operations(cls):
+        for string in cls.polynomial_inputs:
+            data = string.split("(")
+            p1 = Polynomial()
+            p1_data, operator = data[1].split(')')
+            p1_data = p1_data.split('+')
+            for node_string in p1_data:
+                p1.add(*cls.parse_node(node_string.strip()))
+            p2 = Polynomial()
+            p2_data = data[2].split(')')[0].split('+')
+            for node_string in p2_data:
+                p2.add(*cls.parse_node(node_string.strip()))
+            operator = operator.strip()
+            if operator == '+':
+                cls.results.append(p1.plus(p2).get_value(cls.unknown_value))
+            elif operator == '-':
+                cls.results.append(p1.minus(p2).get_value(cls.unknown_value))
+            else:
+                cls.results.append(p1.times(p2).get_value(cls.unknown_value))
+
+    @staticmethod
+    def parse_node(node_string):
+        coef, exp = node_string.split('x^')
+        return BigNumber(coef), BigNumber(exp)
+
+    @classmethod
+    def sort_results(cls):
+        cls.results.sort()
+
+    @classmethod
+    def find_target(cls):
+        return cls.binary_search(cls.results, 0, len(cls.results) - 1, cls.target)
+
+    @staticmethod
+    def binary_search(arr, low, high, x):
+        if low <= high:
+            mid = (high + low) // 2
+            if arr[mid] == x:
+                return mid
+            elif arr[mid] > x:
+                return Ghati.binary_search(arr, low, mid - 1, x)
+            return Ghati.binary_search(arr, mid + 1, high, x)
+        return -1
 
 
 if __name__ == "__main__":
-    p1 = Polynomial()
-    p1.add(2, 1)
-    p1.add(1, 0)
-    p2 = Polynomial()
-    p2.add(3, 1)
-    p2.add(1, 0)
-    p3 = p1.times(p2)
-    p3.print_polynomial()
+    Ghati.init()
+    Ghati.calculate_polynomial_operations()
+    Ghati.calculate_big_number_operations()
+    Ghati.sort_results()
+    print(Ghati.find_target())
