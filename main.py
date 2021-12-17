@@ -116,13 +116,13 @@ class BigNumber:
     def decrease(self):
         return self - BigNumber('1')
 
-    def shift_left(self, n=1):
+    def shift_right(self, n=1):
         clone = self.clone()
         for _ in range(n):
             clone.num_array.pop(0)
         return clone
 
-    def shift_right(self, n=1):
+    def shift_left(self, n=1):
         clone = self.clone()
         for _ in range(n):
             clone.num_array.insert(0, 0)
@@ -167,7 +167,7 @@ class BigNumber:
                 temp_result = other[i] * self[j] + carry
                 big_temp[j] = temp_result % 10
                 carry = temp_result // 10
-            big_temp = big_temp.shift_right(i)
+            big_temp = big_temp.shift_left(i)
             result = result.plus(big_temp)
         result.sign = not (self.sign ^ other.sign)
         return result
@@ -191,6 +191,9 @@ class Node:
         self.coef = coef
         self.exp = exp
 
+    def __repr__(self):
+        return f"({self.coef} , {self.exp})"
+
 
 class Polynomial:
     available = 0
@@ -200,6 +203,11 @@ class Polynomial:
         self.start = None
         self.finish = None
 
+    def print_poly(self):
+        for i in range(self.start, self.finish + 1):
+            print(Polynomial.elements[i], end=" ")
+        print()
+
     def add(self, coef, exp):
         if coef.is_zero():
             return
@@ -208,14 +216,18 @@ class Polynomial:
             self.start = self.finish = Polynomial.available
             self.elements.append(node)
         else:
-            for i in range(self.finish, self.start - 1, -1):
-                if Polynomial.elements[i].exp == exp:
-                    Polynomial.elements[i].coef += coef
-                    break
-                elif Polynomial.elements[i].exp > exp:
-                    Polynomial.elements.insert(i + 1, node)
-                    self.finish += 1
-                    break
+            if exp > Polynomial.elements[self.start].exp:
+                Polynomial.elements.insert(self.start, node)
+                self.finish += 1
+            else:
+                for i in range(self.finish, self.start - 1, -1):
+                    if Polynomial.elements[i].exp == exp:
+                        Polynomial.elements[i].coef += coef
+                        break
+                    elif Polynomial.elements[i].exp > exp:
+                        Polynomial.elements.insert(i + 1, node)
+                        self.finish += 1
+                        break
         Polynomial.available += 1
 
     def remove(self, coef, exp):
