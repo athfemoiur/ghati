@@ -10,10 +10,23 @@ class BigNumber:
             number_str = number_str[1:]
         self.num_array = list(map(int, reversed(number_str)))
 
+    @classmethod
+    def zero(cls, n):
+        """
+        initialize an instance with n zeros
+        """
+        zero = cls('0')
+        for _ in range(n - 1):
+            zero.num_array.append(0)
+        return zero
+
     def clone(self):
         return copy.deepcopy(self)
 
     def remove_extra_zeros(self):
+        """
+        remove unused zeros from num_array
+        """
         self.num_array = list(map(int, reversed(str(self))))
 
     def __str__(self):
@@ -34,15 +47,25 @@ class BigNumber:
         return result
 
     def __add__(self, other):
-        return self.plus(other)
+        if self.sign and other.sign:
+            return self.plus(other)
+        if not self.sign and not other.sign:
+            return -self.plus(other)
+        if not self.sign == other.sign:
+            comparison = self.compare(other)
+            if comparison == 1:
+                result = self.minus(other)
+                result.sign = self.sign
+                return result
+            elif comparison == -1:
+                result = other.minus(self)
+                result.sign = other.sign
+                return result
+            else:
+                return BigNumber('0')
 
     def __sub__(self, other):
-        comparison = self.compare(other)
-        if comparison == 1:
-            return self.minus(other)
-        elif comparison == -1:
-            return -other.unsigned_minus(self)
-        return BigNumber('0')
+        return self + (-other)
 
     def __mul__(self, other):
         return self.times(other)
@@ -56,12 +79,8 @@ class BigNumber:
     def __gt__(self, other):
         return self.compare(other) == 1
 
-    @classmethod
-    def zero(cls, n):
-        zero = cls('0')
-        for _ in range(n - 1):
-            zero.num_array.append(0)
-        return zero
+    def __eq__(self, other):
+        return self.compare(other) == 0
 
     def to_int(self):
         number_str = str(self)
@@ -73,18 +92,6 @@ class BigNumber:
     def append_zero(self, n):
         for _ in range(n):
             self.num_array.append(0)
-
-    def shift_right(self, n=1):
-        clone = self.clone()
-        for _ in range(n):
-            clone.num_array.pop(0)
-        return clone
-
-    def shift_left(self, n=1):
-        clone = self.clone()
-        for _ in range(n):
-            clone.num_array.insert(0, 0)
-        return clone
 
     def compare(self, other):
         s1 = str(self)
@@ -99,6 +106,27 @@ class BigNumber:
             elif n2 > n1:
                 return -1
         return 0
+
+    def is_zero(self):
+        return True if self.to_int() == 0 else False
+
+    def increase(self):
+        return self + BigNumber('1')
+
+    def decrease(self):
+        return self - BigNumber('1')
+
+    def shift_left(self, n=1):
+        clone = self.clone()
+        for _ in range(n):
+            clone.num_array.pop(0)
+        return clone
+
+    def shift_right(self, n=1):
+        clone = self.clone()
+        for _ in range(n):
+            clone.num_array.insert(0, 0)
+        return clone
 
     def plus(self, other):
         n1, n2 = len(self.num_array), len(other.num_array)
@@ -128,12 +156,6 @@ class BigNumber:
             result[i] = self[i] - other[i]
         return result
 
-    def increase(self):
-        return self.plus(BigNumber('1'))
-
-    def decrease(self):
-        return self.minus(BigNumber('1'))
-
     def times(self, other):
         n1, n2 = len(self.num_array), len(other.num_array)
         result = BigNumber.zero(1)
@@ -145,7 +167,7 @@ class BigNumber:
                 temp_result = other[i] * self[j] + carry
                 big_temp[j] = temp_result % 10
                 carry = temp_result // 10
-            big_temp = big_temp.shift_left(i)
+            big_temp = big_temp.shift_right(i)
             result = result.plus(big_temp)
         result.sign = not (self.sign ^ other.sign)
         return result
@@ -178,15 +200,9 @@ class Polynomial:
         self.start = None
         self.finish = None
 
-    def get_value(self, x):
-        result = 0
-        x_big_number = BigNumber(str(x))
-        for i in range(self.start, self.finish + 1):
-            result += (x_big_number ** Polynomial.elements[i].exp * Polynomial.elements[i].coef).to_int()
-
-        return result
-
     def add(self, coef, exp):
+        if coef.is_zero():
+            return
         node = Node(coef, exp)
         if self.start is None:
             self.start = self.finish = Polynomial.available
@@ -265,23 +281,25 @@ class Polynomial:
         return result
 
     def is_zero(self):
-        if self.start is None:
-            return True
-        for i in range(self.start, self.finish + 1):
-            if not Polynomial.elements[i] == 0:
-                return False
-        return True
+        return False if self.start else True
 
-    def get_coef(self, exp):
+    def get_coefficient(self, exp):
         for i in range(self.start, self.finish + 1):
             if Polynomial.elements[i].exp == exp:
                 return Polynomial.elements[i].coef
         return None
 
-    def get_maximum_exp(self):
+    def get_maximum_exponent(self):
         if self.start is None:
             return None
         return Polynomial.elements[self.start].exp
+
+    def get_value(self, x):
+        result = 0
+        x_big_number = BigNumber(str(x))
+        for i in range(self.start, self.finish + 1):
+            result += (x_big_number ** Polynomial.elements[i].exp * Polynomial.elements[i].coef).to_int()
+        return result
 
 
 class Ghati:
@@ -300,20 +318,6 @@ class Ghati:
             cls.big_number_inputs.append(input())
         cls.unknown_value = int(input())
         cls.target = int(input())
-
-    @classmethod
-    def calculate_big_number_operations(cls):
-        for string in cls.big_number_inputs:
-            data = string.split(" ")
-            big_number = BigNumber(data[0])
-            if data[1] == '++':
-                cls.results.append(big_number.increase().to_int())
-            elif data[1] == '--':
-                cls.results.append(big_number.decrease().to_int())
-            elif data[1] == 'R':
-                cls.results.append(big_number.shift_right().to_int())
-            else:
-                cls.results.append(big_number.shift_left().to_int())
 
     @classmethod
     def calculate_polynomial_operations(cls):
@@ -336,10 +340,19 @@ class Ghati:
             else:
                 cls.results.append(p1.times(p2).get_value(cls.unknown_value))
 
-    @staticmethod
-    def parse_node(node_string):
-        coef, exp = node_string.split('x^')
-        return BigNumber(coef), BigNumber(exp)
+    @classmethod
+    def calculate_big_number_operations(cls):
+        for string in cls.big_number_inputs:
+            data = string.split(" ")
+            big_number = BigNumber(data[0])
+            if data[1] == '++':
+                cls.results.append(big_number.increase().to_int())
+            elif data[1] == '--':
+                cls.results.append(big_number.decrease().to_int())
+            elif data[1] == 'R':
+                cls.results.append(big_number.shift_right().to_int())
+            else:
+                cls.results.append(big_number.shift_left().to_int())
 
     @classmethod
     def sort_results(cls):
@@ -360,10 +373,16 @@ class Ghati:
             return Ghati.binary_search(arr, mid + 1, high, x)
         return -1
 
+    @staticmethod
+    def parse_node(node_string):
+        coef, exp = node_string.split('x^')
+        return BigNumber(coef), BigNumber(exp)
+
 
 if __name__ == "__main__":
     Ghati.init()
     Ghati.calculate_polynomial_operations()
     Ghati.calculate_big_number_operations()
     Ghati.sort_results()
-    print(Ghati.find_target())
+    index = Ghati.find_target()
+    print(index)
